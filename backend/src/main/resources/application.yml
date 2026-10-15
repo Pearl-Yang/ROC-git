@@ -1,0 +1,193 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: utf-8
+      enabled: true
+      force: true
+  # T-01：放开 Tomcat 大文件吞咽上限
+  tomcat:
+    max-swallow-size: 250MB
+
+spring:
+  application:
+    name: rocgit-knife4j
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      # T-02：LocalDateTime 序列化为字符串而非数组，避免前端展示异常
+      write-dates-as-timestamps: false
+  # T-01：单文件 200MB，整个请求 220MB
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 220MB
+      file-size-threshold: 1MB
+
+  # MySQL 数据源（Docker 编排时由环境变量覆盖；本地默认连 docker 容器 host=mysql）
+  datasource:
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:roc_git}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&serverZoneId=Asia/Shanghai&connectTimeout=5000&socketTimeout=30000
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+      pool-name: RocgitHikariCP
+      # MySQL 暂未起来时不要让应用直接挂掉，留给 docker-compose depends_on 处理
+      initialization-fail-timeout: 60000
+      connection-timeout: 5000
+
+  # SQL 初始化脚本
+  # schema.sql 与 seed.sql 由 docker-compose 的 mysql 服务在启动时执行
+  # Spring Boot 启动时不再跑 SQL（mode: never），避免每次重启 DROP 表丢数据
+  sql:
+    init:
+      mode: never
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 关掉 stdout 刷屏，开发期需要可临时改为 StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  # 复杂 SQL 走 XML（项目动态、成员贡献排行等）
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# SpringDoc OpenAPI 配置（OpenAPI 3.0 + Knife4j）
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  default-flat-param-object: false
+
+# Knife4j 增强配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn                    # 中文界面
+    enable-version: true               # 启用版本
+    enable-swagger-models: true        # 显示实体类
+    swagger-model-name: 实体类列表      # 实体类列表标题
+    enable-document-manage: true       # 文档管理
+    enable-run-script: true            # 测试脚本
+
+# JWT 配置
+jwt:
+  secret: rocgit-secret-key-2026-very-long-string
+  expiration: 604800  # 7 天（秒）
+
+  # T-25：腾讯云短信配置（sms.provider=log 时不接真接口；验证码写到 logs/sms-YYYY-MM-DD.log）
+sms:  # log | tencent；不填默认 log
+  provider: ${SMS_PROVIDER:log}
+  tencent:
+    secret-id: ${TENCENT_SMS_SECRET_ID:}
+    secret-key: ${TENCENT_SMS_SECRET_KEY:}
+    app-id: ${TENCENT_SMS_APP_ID:}
+    sign-name: ${TENCENT_SMS_SIGN_NAME:ROC-git}
+    template-id: ${TENCENT_SMS_TEMPLATE_ID:}
+  code:
+    ttl-seconds: ${SMS_TTL_SECONDS:300}      # 验证码 5 分钟过期
+    resend-cooldown: ${SMS_RESEND_COOLDOWN:60}  # 同号重发间隔 60s
+    daily-limit: ${SMS_DAILY_LIMIT:10}        # 单号日上限 10 条
+
+# T-01 文件存储配置
+# - root：磁盘根目录（容器内 /data/files；宿主机挂载点）
+# - base-url：返回给前端的访问基地址（H5 部署用 /files/ 让 nginx 拉；开发直连改 http://localhost:8080/files）
+rocgit:  file:
+    root: ${ROCGIT_FILE_ROOT:/data/files}
+    base-url: ${ROCGIT_FILE_BASE_URL:/files}
+    # 允许的扩展名（白名单；空 = 不限）
+    allowed-types: docx,doc,pdf,xlsx,pptx,png,jpg,jpeg,gif,webp,drawio,zip,rar,7z,txt,md,json,xml,csv,mp4,mov
+    # 存储 provider：local（默认落本地） | s3（OSS/COS，启用 S3FileStorageService）
+    provider: ${ROCGIT_FILE_PROVIDER:local}
+    # OSS / S3 兼容对象存储凭证（provider=s3 时启用）
+    s3:
+      endpoint: ${ROCGIT_FILE_S3_ENDPOINT:}
+      bucket: ${ROCGIT_FILE_S3_BUCKET:}
+      access-key: ${ROCGIT_FILE_S3_ACCESS_KEY:}
+      secret-key: ${ROCGIT_FILE_S3_SECRET_KEY:}
+      region: ${ROCGIT_FILE_S3_REGION:oss-cn-shanghai}
+      path-prefix: ${ROCGIT_FILE_S3_PATH_PREFIX:rocgit/}
+  # T-12：在线预览配置
+  preview:
+    # text/* 类直接返内联文本的上限（字节）
+    max-text-bytes: ${ROCGIT_PREVIEW_MAX_TEXT_BYTES:262144}
+    # 图片类直链大小上限（字节）
+    max-image-bytes: ${ROCGIT_PREVIEW_MAX_IMAGE_BYTES:20971520}
+    # 转码后的 PDF 缓存目录
+    pdf-cache-dir: ${ROCGIT_PREVIEW_PDF_CACHE_DIR:/data/files/preview}
+    # libreoffice 可执行文件名（容器内 apt 装）
+    libreoffice-bin: ${ROCGIT_PREVIEW_LIBREOFFICE_BIN:libreoffice}
+    # 单次转码超时
+    convert-timeout-seconds: ${ROCGIT_PREVIEW_CONVERT_TIMEOUT:90}
+    max-retries: ${ROCGIT_PREVIEW_MAX_RETRIES:3}
+
+# W3：微信小程序配置（未配置时不激活 WechatMpService，dev 仍走 mock）
+wechat:
+  mp:
+    app-id: ${WECHAT_MP_APP_ID:}
+    app-secret: ${WECHAT_MP_APP_SECRET:}
+    jscode2session-url: ${WECHAT_MP_JSCODE2SESSION_URL:https://api.weixin.qq.com/sns/jscode2session}
+  # CommonController 用的上传根目录（保留兼容）
+  upload:
+    dir: ${ROCGIT_UPLOAD_DIR:/data/files}
+    base-url: ${ROCGIT_UPLOAD_BASE_URL:/files}
+  # T-02：分享链接生成时的访问基地址（H5 Docker 默认用 frontend 80 端口的 /view 路由）
+  share:
+    base-url: ${ROCGIT_SHARE_BASE_URL:http://127.0.0.1/view}
+  # B5：CORS 跨域白名单
+  #   dev（无 ALLOWED_ORIGINS）：放行 *（与原行为一致）
+  #   prod：export ALLOWED_ORIGINS=https://a.com,https://b.com 后只放行列表内域名
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:*}
+
+logging:
+  level:
+    root: INFO
+    com.rocgit: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
+
+# P3-2：actuator + prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+    prometheus:
+      access: read_only
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true

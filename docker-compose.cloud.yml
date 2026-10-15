@@ -1,0 +1,91 @@
+# =============================================================================
+# ROC-git · 云端部署编排（v1.2）
+#
+# 与 docker-compose.yml 的差异：
+#   - 不再 compose 内启动 MySQL（改用云 RDS，DB_HOST 等环境变量注入）
+#   - 镜像从云端 Registry 拉取（变量：REGISTRY / IMAGE_NAMESPACE / IMAGE_TAG）
+#   - 共享 ./data/files 卷到云盘（EFS / 持久化 SSD）
+#   - 前端挂出 80/443，挂载 ./frontend/nginx.https.conf + ./ssl
+#
+# 用法：
+#   cp .env.cloud.example .env.cloud
+#   # 修 .env.cloud 里的占位符
+#   docker compose -f docker-compose.cloud.yml --env-file .env.cloud up -d
+#   docker compose -f docker-compose.cloud.yml logs -f backend
+# =============================================================================
+
+name: rocgit-cloud
+
+services:
+  backend:
+    image: ${REGISTRY}/${IMAGE_NAMESPACE}/backend:${IMAGE_TAG}
+    container_name: rocgit-backend
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8"
+      # 数据源（云 RDS）
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # 文件
+      ROCGIT_UPLOAD_DIR: /data/files
+      ROCGIT_UPLOAD_BASE_URL: /files
+      ROCGIT_FILE_BASE_URL: ${ROCGIT_FILE_BASE_URL}
+      # 分享链接 base-url（必须是 https 域名）
+      ROCGIT_SHARE_BASE_URL: https://${DOMAIN}/view
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      # 短信
+      SMS_PROVIDER: ${SMS_PROVIDER:-log}
+      TENCENT_SMS_SECRET_ID: ${TENCENT_SMS_SECRET_ID:-}
+      TENCENT_SMS_SECRET_KEY: ${TENCENT_SMS_SECRET_KEY:-}
+      TENCENT_SMS_APP_ID: ${TENCENT_SMS_APP_ID:-}
+      TENCENT_SMS_SIGN_NAME: ${TENCENT_SMS_SIGN_NAME:-ROC-git}
+      TENCENT_SMS_TEMPLATE_ID: ${TENCENT_SMS_TEMPLATE_ID:-}
+      # W2：对象存储（不填则走本地；s3 模式启用 S3FileStorageService）
+      ROCGIT_FILE_PROVIDER: ${ROCGIT_FILE_PROVIDER:-local}
+      ROCGIT_FILE_S3_ENDPOINT: ${ROCGIT_FILE_S3_ENDPOINT:-}
+      ROCGIT_FILE_S3_BUCKET: ${ROCGIT_FILE_S3_BUCKET:-}
+      ROCGIT_FILE_S3_ACCESS_KEY: ${ROCGIT_FILE_S3_ACCESS_KEY:-}
+      ROCGIT_FILE_S3_SECRET_KEY: ${ROCGIT_FILE_S3_SECRET_KEY:-}
+      ROCGIT_FILE_S3_REGION: ${ROCGIT_FILE_S3_REGION:-oss-cn-shanghai}
+      ROCGIT_FILE_S3_PATH_PREFIX: ${ROCGIT_FILE_S3_PATH_PREFIX:-rocgit/}
+      # W3：微信小程序
+      WECHAT_MP_APP_ID: ${WECHAT_MP_APP_ID:-}
+      WECHAT_MP_APP_SECRET: ${WECHAT_MP_APP_SECRET:-}
+    volumes:
+      - ${UPLOAD_DIR:-/data/rocgit/files}:/data/files
+    networks:
+      - rocnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health/db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    image: ${REGISTRY}/${IMAGE_NAMESPACE}/frontend:${IMAGE_TAG}
+    container_name: rocgit-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend/nginx.https.conf:/etc/nginx/conf.d/default.conf:ro
+      # 证书：let's encrypt 路径或自有证书路径
+      - ./ssl:/etc/nginx/ssl:ro
+      # 与 backend 共享上传目录
+      - ${UPLOAD_DIR:-/data/rocgit/files}:/data/files:ro
+    networks:
+      - rocnet
+
+networks:
+  rocnet:
+    driver: bridge

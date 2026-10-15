@@ -1,0 +1,31 @@
+{
+  "name": "roc-git-uniapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:h5": "uni",
+    "build:h5": "uni build",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "dev:app": "uni -p app",
+    "build:app": "uni build -p app",
+    "migrate": "node scripts/migrate.mjs",
+    "check": "node scripts/check.mjs",
+    "check:browser": "node scripts/interaction-check.mjs",
+    "check:layout": "node scripts/preview-check.mjs"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-5020420260813001",
+    "@dcloudio/uni-components": "3.0.0-5020420260813001",
+    "@dcloudio/uni-h5": "3.0.0-5020420260813001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-5020420260813001",
+    "pdfjs-dist": "4.0.379",
+    "vue": "3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "3.0.0-5020420260813001",
+    "@iconify-json/lucide": "^1.2.0",
+    "@iconify/vue": "^4.1.2",
+    "vite": "5.2.8"
+  }
+}

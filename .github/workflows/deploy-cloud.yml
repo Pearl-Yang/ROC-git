@@ -1,0 +1,108 @@
+name: deploy-cloud
+
+# W4：ECS 一键部署（推送后自动 SSH 拉新镜像 + 重启 + 健康检查）
+#
+# 必要 Secrets（GitHub Repo → Settings → Secrets）：
+#   ECS_HOST                ecs 公网 IP / 域名
+#   ECS_SSH_KEY             ssh 私钥（id_rsa 内容；公钥已加到 ECS ~/.ssh/authorized_keys）
+#   ECS_DEPLOY_DIR          部署目录，如 /opt/rocgit
+#   CLOUD_ENV_FILE          .env.cloud 完整内容（base64 编码避免特殊字符转义）
+#
+# 可选 Secrets（数据库运维）：
+#   DB_REPLICA_HOST         备用 RDS 地址（蓝绿切换用）
+#
+# 触发：手动 workflow_dispatch，或 push tag v*.*.* 后由 image-publish 接力
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要部署的镜像 tag"
+        required: true
+        default: "latest"
+      smoke_test:
+        description: "部署完跑 smoke 验证（true/false）"
+        required: false
+        default: "true"
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decode .env.cloud
+        env:
+          ENV_B64: ${{ secrets.CLOUD_ENV_FILE }}
+        run: |
+          if [[ -z "$ENV_B64" ]]; then
+            echo "::error::缺少 Secret CLOUD_ENV_FILE"
+            exit 2
+          fi
+          mkdir -p .deploy
+          echo "$ENV_B64" | base64 -d > .deploy/.env.cloud
+          # 替换镜像 tag
+          sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${{ github.event.inputs.tag || github.ref_name }}/" .deploy/.env.cloud
+          echo "::notice::已生成 .deploy/.env.cloud (tag=${{ github.event.inputs.tag || github.ref_name }})"
+
+      - name: Copy files to ECS via SSH
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
+          ECS_DEPLOY_DIR: ${{ secrets.ECS_DEPLOY_DIR }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$ECS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$ECS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # 上传 .env.cloud
+          scp .deploy/.env.cloud "root@${ECS_HOST}:${ECS_DEPLOY_DIR}/.env.cloud"
+          # 上传 docker-compose 与脚本
+          scp docker-compose.cloud.yml "root@${ECS_HOST}:${ECS_DEPLOY_DIR}/docker-compose.cloud.yml"
+          scp -r scripts "root@${ECS_HOST}:${ECS_DEPLOY_DIR}/scripts"
+          # 上传 monitor compose（如有）
+          if [[ -f docker-compose.monitor.yml ]]; then
+            scp docker-compose.monitor.yml "root@${ECS_HOST}:${ECS_DEPLOY_DIR}/"
+          fi
+
+      - name: Pull & restart on ECS
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_DEPLOY_DIR: ${{ secrets.ECS_DEPLOY_DIR }}
+        run: |
+          ssh "root@${ECS_HOST}" <<EOF
+            set -e
+            cd "${ECS_DEPLOY_DIR}"
+            chmod +x scripts/*.sh
+            docker compose -f docker-compose.cloud.yml --env-file .env.cloud pull
+            docker compose -f docker-compose.cloud.yml --env-file .env.cloud up -d
+            echo "等待后端健康..."
+            for i in {1..30}; do
+              if curl -sf https://\${DOMAIN}/api/v1/health/db >/dev/null 2>&1; then
+                echo "Health OK"
+                break
+              fi
+              sleep 5
+            done
+          EOF
+
+      - name: Smoke test
+        if: ${{ github.event.inputs.smoke_test == 'true' || github.event_name == 'push' }}
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+        run: |
+          ssh "root@${ECS_HOST}" <<'EOF'
+            set -e
+            echo "[smoke] health"
+            curl -sf https://${DOMAIN}/api/v1/health || { echo "health failed"; exit 1; }
+            echo "[smoke] db"
+            curl -sf https://${DOMAIN}/api/v1/health/db || { echo "db failed"; exit 1; }
+            echo "[smoke] prometheus"
+            curl -sf https://${DOMAIN}/actuator/prometheus | head -5
+            echo "All smoke checks passed"
+          EOF

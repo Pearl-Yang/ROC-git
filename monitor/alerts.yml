@@ -1,0 +1,57 @@
+groups:
+  - name: rocgit_alerts
+    interval: 30s
+    rules:
+      # 5xx 比例 > 1%
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx 错误率 > 1% 持续 2 分钟"
+          description: "当前 5xx 错误率 {{ $value | humanizePercentage }}"
+
+      # 慢接口 P99 > 2s
+      - alert: SlowApi
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le, uri)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "接口 P99 > 2s"
+          description: "{{ $labels.uri }} 当前 P99 = {{ $value }}s"
+
+      # DB 连接池占用 > 80%
+      - alert: DbPoolHigh
+        expr: |
+          (hikaricp_connections_active / hikaricp_connections_max) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HikariCP 连接池占用 > 80%"
+
+      # 磁盘使用 > 80%
+      - alert: DiskHigh
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "磁盘剩余 < 20%"
+
+      # JVM 内存使用 > 90%
+      - alert: JvmMemoryHigh
+        expr: |
+          (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用 > 90%"

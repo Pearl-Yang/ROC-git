@@ -1,0 +1,43 @@
+name: frontend
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build H5
+        working-directory: frontend
+        run: npm run build:h5
+      - name: Build MP-WEIXIN
+        working-directory: frontend
+        run: npm run build:mp-weixin
+      - name: Upload H5 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: h5-build
+          path: frontend/dist/build/h5
+          retention-days: 7
+      - name: Upload MP-WEIXIN artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp-weixin-build
+          path: frontend/dist/build/mp-weixin
+          retention-days: 7

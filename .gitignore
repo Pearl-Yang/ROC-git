@@ -1,0 +1,221 @@
+# =======================================================================
+# ROC-git · 课程小组文档协作管理平台
+# .gitignore - 全栈项目通用（后端 Spring Boot + 前端 uni-app/Vue）
+# 最后更新: 2026-10-15
+# =======================================================================
+
+# -------- 0. 永远不推送：密钥 / 凭据 / 隐私 --------
+# SSH 私钥 / PEM / KEY
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+_*-key*
+_*-key.pem
+_*-private*
+
+# 环境变量 / 真实配置（含密码、secret、token）
+.env
+.env.*
+!.env.example
+!.env.cloud.example
+!.env.development
+!.env.production
+!.env.mp-weixin
+!.env.app
+
+# Docker / 部署中的敏感文件
+secrets/
+*.secret
+
+# 备份 / dump（含真实数据）
+*.sql.gz
+*.dump
+mysqldump-*
+
+# -------- 1. 后端构建产物 (Spring Boot / Maven) --------
+backend/target/
+backend/build/
+**/*.class
+**/*.jar
+!**/lib/*.jar
+**/*.war
+**/*.ear
+**/*.nar
+**/*.zip
+**/*.tar.gz
+**/*.rar
+**/*.log
+
+# Maven 本地仓库元数据
+.mvn/wrapper/maven-wrapper.jar
+
+# mvnw 不忽略（要保留 wrapper 脚本）
+!/.mvn/wrapper/maven-wrapper.properties
+
+# Spring Boot DevTools
+.restart
+spring-boot-devtools.properties
+
+# IDE / Lombok 生成的代码
+.apt_generated/
+.idea/
+*.iml
+*.ipr
+*.iws
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# -------- 2. 前端构建产物 (uni-app / Vue / Vite / npm) --------
+frontend/node_modules/
+frontend/dist/
+frontend/unpackage/
+frontend/.output/
+frontend/.nuxt/
+frontend/.cache/
+frontend/.vite/
+frontend/.temp/
+frontend/.hbuilderx/
+
+# yarn / pnpm / npm 缓存
+.yarn/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock.bak
+pnpm-lock.yaml.bak
+
+# 微信开发者工具产物
+**/project.config.json.bak
+**/project.private.config.json
+**/miniprogram_npm/
+
+# HBuilderX 工程文件
+.hbuilderx/
+
+# -------- 3. 数据库 / 数据 / 运行时产物 --------
+data/
+data/files/
+data/*.log
+data/*.txt
+data/login.json
+data/smoke-*
+data/.smoke_token
+data/downloaded_*
+data/mp-weixin.log
+data/h5_download.txt
+data/backend-local.*
+
+# MySQL 数据卷
+mysql-data/
+*.ibd
+*.frm
+
+# Docker volume
+docker-data/
+
+# 上传的文件（运行时生成）
+uploads/
+upload/
+file-store/
+storage/
+
+# -------- 4. 文档/报告生成过程的中间产物 --------
+doc/_mermaid_dump/
+doc/flowchart_images.zip
+doc/flowchart_images/__pycache__/
+doc/flowchart_images/*.svg.bak
+doc/scan_mermaid.py
+doc/cleanup2.py
+doc/setup_validator.py
+doc/validate_mermaid.py
+doc/verify.py
+doc/_build/
+doc/_tmp/
+
+# -------- 5. 操作系统 / 编辑器 / IDE --------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# VS Code（保留 .vscode/settings.json 这种共享配置）
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# IntelliJ / WebStorm
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+.atomic-comments/
+
+# Cursor
+.cursor/
+
+# -------- 6. 临时文件 / 缓存 / 杂项 --------
+*.tmp
+*.temp
+*.bak
+*.swp
+*.orig
+*.rej
+.cache/
+.tmp/
+.temp/
+.turbo/
+.history/
+*.local
+
+# 日志
+*.log
+logs/
+backend/logs/
+frontend/logs/
+nginx/logs/
+
+# 覆盖率报告
+coverage/
+.nyc_output/
+*.lcov
+*.clover
+*.info
+
+# 单元测试临时产物
+**/test-output/
+**/test-results/
+**/surefire-reports/
+**/junitreports/
+**/__snapshots__/
+
+# OS 锁文件
+.lck
+.lock-*
+*-lock.json
+
+# -------- 7. 临时 shell / python 脚本（不入库） --------
+scripts/*.local.*
+scripts/*.bak
+scripts/_tmp/
+scripts/.cache/
+
+# -------- 8. 备份 / 副本 --------
+*.bak.*
+*~
+*.copy
+*.original
+
+# -------- 9. 大型参考资源 --------
+# doc/参考资料/*.pdf 仍然保留（课程报告引文）
+# 如需忽略 uncomment：
+# doc/参考资料/*.pdf

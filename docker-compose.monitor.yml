@@ -1,0 +1,53 @@
+# ROC-git · 监控 / 备份 / 灰度 (P3-2 ~ P3-4)
+#
+# 用法：
+#   docker compose -f docker-compose.monitor.yml up -d
+#   访问 Grafana: http://127.0.0.1:3000  (admin/admin, 首次登录会要求改密码)
+#   Prometheus:  http://127.0.0.1:9090
+#
+# 注意：必须先启动主 docker-compose 里的 backend（提供 /actuator/prometheus）
+
+version: "3.9"
+
+name: rocgit-monitor
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: rocgit-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitor/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: rocgit-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./monitor/grafana-provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: rocgit-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitor/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"

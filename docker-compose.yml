@@ -1,0 +1,88 @@
+# ROC-git 顶层 docker-compose
+#
+# 一键起：MySQL 8.0（自动 init schema/seed）+ Spring Boot 后端 + uni-app H5 nginx
+# 用法：
+#   docker compose up -d --build
+#   docker compose logs -f backend
+#   docker compose down
+#
+# 端口：
+#   80   前端 nginx（uni-app H5 + /api 反代）
+#   8080 后端 Spring Boot（Knife4j doc.html）
+#   3306 MySQL（开发期可直连，调试用）
+
+name: rocgit
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: rocgit-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: roc_git
+      MYSQL_USER: rocgit
+      MYSQL_PASSWORD: rocgit_pwd
+      TZ: Asia/Shanghai
+    volumes:
+      - rocgit_mysql_data:/var/lib/mysql
+      - ./backend/database:/docker-entrypoint-initdb.d:ro
+      - ./backend/docker/conf:/etc/mysql/conf.d:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rocgit-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: roc_git
+      DB_USER: root
+      DB_PASSWORD: root
+      TZ: Asia/Shanghai
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8"
+      # T-01：上传根目录 + 访问 base-url
+      # 返回给前端的 url 用 /files/ 前缀，让前端 nginx 通过 alias 直接出静态文件
+      # （避免前端用 http://127.0.0.1:8080/files 错把请求打到前端容器自己）
+      ROCGIT_UPLOAD_DIR: /data/files
+      ROCGIT_UPLOAD_BASE_URL: /files
+      ROCGIT_SHARE_BASE_URL: http://127.0.0.1/view
+    ports:
+      - "18080:8080"
+    # T-01 B 方案：bind mount 到 ./data/files（数据留在项目里，git/.gitignore 控；与 frontend 共享）
+    volumes:
+      - ./data/files:/data/files
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api
+    container_name: rocgit-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    # T-01：与 backend 共享 ./data/files（前端 nginx alias 出静态文件）
+    volumes:
+      - ./data/files:/data/files:ro
+
+  # 移除 uploader 容器（bind mount 不需要它来初始化）
+volumes:
+  rocgit_mysql_data:
+    name: rocgit_mysql_data

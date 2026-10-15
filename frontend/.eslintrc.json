@@ -1,0 +1,37 @@
+// T-Q-3：前端 ESLint 配置（需先安装依赖：npm i -D eslint@8 @vue/eslint-config-vue）
+// 当前 package.json 未含 eslint，未在 CI 中跑；保留配置以备后续集成
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:vue/vue3-recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-console": "off",
+    "no-debugger": "warn",
+    "vue/multi-word-component-names": "off",
+    "vue/no-unused-vars": "warn",
+    "vue/component-definition-name-casing": ["error", "PascalCase"],
+    "eqeqeq": ["error", "always"],
+    "prefer-const": "warn",
+    "indent": ["warn", 2, { "SwitchCase": 1 }],
+    "quotes": ["error", "single", { "avoidEscape": true, "allowTemplateLiterals": true }],
+    "semi": ["error", "never"]
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "unpackage",
+    "*.min.js"
+  ]
+}

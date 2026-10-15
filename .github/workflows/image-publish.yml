@@ -1,0 +1,127 @@
+name: image-publish
+
+# 推送 backend / frontend 镜像到云端镜像仓库
+# 触发：push tag v*.*.* 或 workflow_dispatch 手动触发
+# 目标：阿里云 ACR（默认）/ 腾讯云 TCR（手动切换 input.cloud=tencent）
+#
+# 必要 Secrets（在 GitHub Repo → Settings → Secrets and variables → Actions 配置）：
+#   ALIYUN_REGISTRY_USERNAME   阿里云账号（Registry 登录用户名）
+#   ALIYUN_REGISTRY_PASSWORD   阿里云 Registry 独立密码（不是登录密码）
+#   TENCENT_REGISTRY_USERNAME  腾讯云 UIN
+#   TENCENT_REGISTRY_PASSWORD  腾讯云 TCR 临时密码
+#
+# 注意：不会改任何业务代码；只构建镜像并 push。
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "镜像 tag (e.g. 1.0.0 / latest)"
+        required: true
+        default: "latest"
+      cloud:
+        description: "目标云"
+        required: true
+        default: "aliyun"
+        type: choice
+        options:
+          - aliyun
+          - tencent
+
+env:
+  REGISTRY_ALIYUN: registry.cn-hangzhou.aliyuncs.com
+  REGISTRY_TENCENT: ccr.ccs.tencentyun.com
+  NAMESPACE: rocgit
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve target registry
+        id: registry
+        run: |
+          CLOUD="${{ github.event.inputs.cloud || 'aliyun' }}"
+          TAG="${{ github.event.inputs.tag || format('v{0}', github.ref_name) }}"
+          if [[ "$CLOUD" == "tencent" ]]; then
+            REG="${{ env.REGISTRY_TENCENT }}"
+            USER_SECRET="TENCENT_REGISTRY_USERNAME"
+            PASS_SECRET="TENCENT_REGISTRY_PASSWORD"
+          else
+            REG="${{ env.REGISTRY_ALIYUN }}"
+            USER_SECRET="ALIYUN_REGISTRY_USERNAME"
+            PASS_SECRET="ALIYUN_REGISTRY_PASSWORD"
+          fi
+          echo "registry=${REG}" >> "$GITHUB_OUTPUT"
+          echo "user_secret=${USER_SECRET}" >> "$GITHUB_OUTPUT"
+          echo "pass_secret=${PASS_SECRET}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Cloud=$CLOUD  Registry=$REG  Tag=$TAG"
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.registry.outputs.registry }}
+          username: ${{ secrets[steps.registry.outputs.user_secret] }}
+          password: ${{ secrets[steps.registry.outputs.pass_secret] }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.registry.outputs.registry }}/${{ env.NAMESPACE }}/backend
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=${{ steps.registry.outputs.tag }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata (frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.registry.outputs.registry }}/${{ env.NAMESPACE }}/frontend
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=${{ steps.registry.outputs.tag }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          build-args: VITE_API_BASE=/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,194 @@
+{
+  "pages": [
+    {
+      "path": "pages/auth-login/auth-login",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/auth-register/auth-register",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "注册"
+      }
+    },
+    {
+      "path": "pages/auth-forgot/auth-forgot",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "找回密码"
+      }
+    },
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/files/files",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "文件库"
+      }
+    },
+    {
+      "path": "pages/meeting/meeting",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "研讨记录"
+      }
+    },
+    {
+      "path": "pages/messages/messages",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "信息中心"
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "个人空间"
+      }
+    },
+    {
+      "path": "pages/project/project",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "项目协作空间"
+      }
+    },
+    {
+      "path": "pages/create/create",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "创建项目"
+      }
+    },
+    {
+      "path": "pages/share/share",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "项目分享"
+      }
+    },
+    {
+      "path": "pages/share/my-shares",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的分享"
+      }
+    },
+    {
+      "path": "pages/settings/settings",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "系统设置"
+      }
+    },
+    {
+      "path": "pages/view/view",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "分享视图"
+      }
+    },
+    {
+      "path": "pages/version/version",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "版本历史"
+      }
+    },
+    {
+      "path": "pages/reminder/reminder",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "任务提醒"
+      }
+    },
+    {
+      "path": "pages/contribution/contribution",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "贡献度排行"
+      }
+    },
+    {
+      "path": "pages/group/group",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "小组详情"
+      }
+    },
+    {
+      "path": "pages/flowchart/flowchart",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "系统流程图"
+      }
+    },
+    {
+      "path": "pages/agreement/agreement",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "用户协议"
+      }
+    },
+    {
+      "path": "pages/privacy/privacy",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "隐私政策"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#F8FAFC",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#94A3B8",
+    "selectedColor": "#2563EB",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/files/files",
+        "text": "文件",
+        "iconPath": "static/tabbar/files.png",
+        "selectedIconPath": "static/tabbar/files-active.png"
+      },
+      {
+        "pagePath": "pages/meeting/meeting",
+        "text": "研讨",
+        "iconPath": "static/tabbar/meeting.png",
+        "selectedIconPath": "static/tabbar/meeting-active.png"
+      },
+      {
+        "pagePath": "pages/messages/messages",
+        "text": "消息",
+        "iconPath": "static/tabbar/messages.png",
+        "selectedIconPath": "static/tabbar/messages-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "static/tabbar/profile.png",
+        "selectedIconPath": "static/tabbar/profile-active.png"
+      }
+    ]
+  }
+}
